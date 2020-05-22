@@ -1,0 +1,15 @@
+
+# export to pkcs12 keystore
+openssl pkcs12 -export -out keystore.p12 -inkey key.pem -in cert.pem
+
+# import the pkcs12 keystore to jks keystore
+keytool -importkeystore -destkeystore keystore.jks -srcstoretype PKCS12 -srckeystore keystore.p12
+
+# list the contents of jks keystore
+keytool -list -v -keystore keystore.jks
+
+# import ca cert to cacerts truststore
+# keytool -import -trustcacerts -alias myca -file ca.pem -keystore cacerts
+
+keytool -import -alias myca -file ca.pem -keystore cacerts
+
