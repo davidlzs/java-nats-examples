@@ -1,5 +1,36 @@
 
-# export to pkcs12 keystore
+### generate all the keys, certs; refer to: https://github.com/nats-io/nats-operator/issues/119
+
+## Creates your own CA cert
+# generate CA private key
+export HOST=hostname
+openssl genrsa -aes256 -out ca-key.pem 4096
+# generate CA cert
+openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem
+
+## Creates server cert
+# generate server private key
+openssl genrsa -out server-key.pem 4096
+# geneerate server csr
+openssl req -subj "/CN=$HOST" -sha256 -new -key server-key.pem -out server.csr
+# generate server cert with subjectAltName and serverAuth usage extension, signed by CA
+echo subjectAltName = DNS:$HOST,IP:10.10.10.20,IP:127.0.0.1 >> extfile.cnf
+echo extendedKeyUsage = serverAuth >> extfile.cnf
+openssl x509 -req -days 365 -sha256 -in server.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile extfile.cnf
+
+## Create client cert
+# generate client private key
+openssl genrsa -out key.pem 4096
+# generate client csr
+openssl req -subj '/CN=client' -new -key key.pem -out client.csr
+# generate client cert with cientAuth usage uage extension, signed by CA
+echo extendedKeyUsage = clientAuth > extfile-client.cnf
+openssl x509 -req -days 365 -sha256 -in client.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out cert.pem -extfile extfile-client.cnf
+
+
+
+### Use the client cert in java
+# export client cert and private key to pkcs12 keystore
 openssl pkcs12 -export -out keystore.p12 -inkey key.pem -in cert.pem
 
 # import the pkcs12 keystore to jks keystore
@@ -8,8 +39,8 @@ keytool -importkeystore -destkeystore keystore.jks -srcstoretype PKCS12 -srckeys
 # list the contents of jks keystore
 keytool -list -v -keystore keystore.jks
 
+### Add your own CA cert to java truststore (cacerts)
 # import ca cert to cacerts truststore
-# keytool -import -trustcacerts -alias myca -file ca.pem -keystore cacerts
 
 keytool -import -alias myca -file ca.pem -keystore cacerts
 
